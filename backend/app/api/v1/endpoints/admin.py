@@ -296,3 +296,22 @@ async def go_live(
     send_ops_notification(f"Supplier is now LIVE: {supplier.company_name}")
 
     return AdminActionResponse(id=supplier.id, status="live", message="Supplier is now live")
+
+
+@router.delete("/suppliers/{supplier_id}")
+async def delete_supplier(
+    supplier_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_admin),
+):
+    """Delete a supplier and all related data (cascade)."""
+    result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
+    supplier = result.scalar_one_or_none()
+    if not supplier:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    email = supplier.email
+    await db.delete(supplier)
+    await db.commit()
+
+    return {"message": f"Supplier '{email}' deleted successfully"}
